@@ -17,6 +17,18 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## 核心專案原則 (Core Project Principles)
+
+When updating the constitution, you MUST incorporate and strictly enforce the following core principles into the project constitution:
+
+1. **程式碼品質 (Code Quality)**: All code must be clean, maintainable, and well-documented. Follow strict naming conventions, modular architecture, and avoid code duplication.
+2. **測試標準 (Testing Standards)**: High test coverage is mandatory. All new features must include comprehensive unit tests and integration tests before deployment.
+3. **使用者體驗一致性 (User Experience Consistency)**: All user interfaces must adhere to the project's design system and ensure a seamless, intuitive, and accessible experience across all devices.
+4. **效能要求 (Performance Requirements)**: Code must be optimized for speed and efficiency. Avoid unnecessary API calls, optimize database queries, and ensure fast rendering times.
+
+**LANGUAGE REQUIREMENT / 語言要求:**
+All specifications, plans, and user-facing documentation MUST be written in Traditional Chinese (zh-TW) (所有的規格書、計畫及使用者面對的文件都必須以繁體中文 (zh-TW) 撰寫).
+
 ## Outline
 
 You are updating the project constitution at `.specify/memory/constitution.md`. This file is a TEMPLATE containing placeholder tokens in square brackets (e.g. `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`). Your job is to (a) collect/derive concrete values, (b) fill the template precisely, and (c) propagate any amendments across dependent artifacts.
@@ -27,7 +39,7 @@ Follow this execution flow:
 
 1. Load the existing constitution at `.specify/memory/constitution.md`.
    - Identify every placeholder token of the form `[ALL_CAPS_IDENTIFIER]`.
-   **IMPORTANT**: The user might require less or more principles than the ones used in the template. If a number is specified, respect that - follow the general template. You will update the doc accordingly.
+   **IMPORTANT**: The user might require less or more principles than the ones used in the template. Include the core principles defined above. If a number is specified, respect that - follow the general template. You will update the doc accordingly.
 
 2. Collect/derive values for placeholders:
    - If user input (conversation) supplies a value, use it.
@@ -42,8 +54,9 @@ Follow this execution flow:
 3. Draft the updated constitution content:
    - Replace every placeholder with concrete text (no bracketed tokens left except intentionally retained template slots that the project has chosen not to define yet—explicitly justify any left).
    - Preserve heading hierarchy and comments can be removed once replaced unless they still add clarifying guidance.
-   - Ensure each Principle section: succinct name line, paragraph (or bullet list) capturing non‑negotiable rules, explicit rationale if not obvious.
+   - Ensure each Principle section: succinct name line, paragraph (or bullet list) capturing non‑negotiable rules, explicit rationale if not obvious. Ensure all Core Project Principles mentioned above are well documented.
    - Ensure Governance section lists amendment procedure, versioning policy, and compliance review expectations.
+   - **Crucial**: Ensure the entire constitution document is written in **Traditional Chinese (zh-TW)**.
 
 4. Consistency propagation checklist (convert prior checklist into active validations):
    - Read `.specify/templates/plan-template.md` and ensure any "Constitution Check" or rules align with updated principles.

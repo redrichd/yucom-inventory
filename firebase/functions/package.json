@@ -1,0 +1,15 @@
+{
+  "name": "ucon-inventory-functions",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "firebase-functions-test": "^3.4.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}
