@@ -43,7 +43,8 @@ service cloud.firestore {
     // Transactions collection rules
     match /transactions/{transId} {
       allow read: if isAdmin();
-      allow write: if false; // Only written via Admin SDK / Cloud Functions
+      allow create: if isAdmin(); // Allow admins to create logs for inventory fulfillment
+      allow update, delete: if false;
     }
 
     // Regions collection rules

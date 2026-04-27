@@ -1,13 +1,14 @@
 import { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Points, PointMaterial } from '@react-three/drei';
+// @ts-expect-error - maath subpath missing types
 import * as random from 'maath/random/dist/maath-random.esm';
 
 function ParticleField() {
-  const ref = useRef<any>();
+  const ref = useRef<any>(null);
   const sphere = random.inSphere(new Float32Array(3000), { radius: 10 });
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (ref.current) {
       ref.current.rotation.x -= delta / 20;
       ref.current.rotation.y -= delta / 25;

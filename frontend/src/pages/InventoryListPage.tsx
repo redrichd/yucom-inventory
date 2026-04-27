@@ -6,7 +6,10 @@ import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search, Star, Trash2, Edit } from "lucide-react";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { createRequest } from "../features/requests/requestService";
+import { ShoppingCart, Check } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -20,6 +23,7 @@ interface InventoryItem {
 
 export default function InventoryListPage() {
   const { userData, user, liffProfile } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
@@ -30,6 +34,9 @@ export default function InventoryListPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [requestingItem, setRequestingItem] = useState<InventoryItem | null>(null);
+  const [requestQuantity, setRequestQuantity] = useState("1");
+  const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
     if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
@@ -157,6 +164,26 @@ export default function InventoryListPage() {
     });
   };
 
+    });
+  };
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !requestingItem || !requestQuantity) return;
+
+    try {
+      setIsRequesting(true);
+      await createRequest(user.uid, requestingItem.id, Number(requestQuantity));
+      setRequestingItem(null);
+      setRequestQuantity("1");
+      alert("申請成功，請等待管理員審核！");
+    } catch (error: any) {
+      alert(error.message || "申請失敗");
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
   const filteredItems = items
     .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
@@ -202,17 +229,26 @@ export default function InventoryListPage() {
         </div>
 
         {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
-          <Button 
-            onClick={() => setShowAddForm(!showAddForm)} 
-            size="lg"
-            className="w-full md:w-auto"
-          >
-            {showAddForm ? (
-              <><X className="w-5 h-5 mr-2" /> 取消新增</>
-            ) : (
-              <><Plus className="w-5 h-5 mr-2" /> 新增庫存品項</>
-            )}
-          </Button>
+          <div className="flex gap-3 w-full md:w-auto">
+            <Button 
+              variant="secondary"
+              onClick={() => navigate("/admin/approvals")}
+              className="flex-1 md:flex-none"
+            >
+              <Check className="w-5 h-5 mr-2" /> 審核申請
+            </Button>
+            <Button 
+              onClick={() => setShowAddForm(!showAddForm)} 
+              size="lg"
+              className="flex-1 md:flex-none"
+            >
+              {showAddForm ? (
+                <><X className="w-5 h-5 mr-2" /> 取消新增</>
+              ) : (
+                <><Plus className="w-5 h-5 mr-2" /> 新增庫存品項</>
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -420,14 +456,72 @@ export default function InventoryListPage() {
                   <div className="flex items-center justify-between pt-2">
                      <div className="flex items-center gap-1.5 text-gray-400">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                        <span className="text-[10px] font-bold tracking-widest uppercase">已與雲端同步</span>
+                        <span className="text-[10px] font-medium tracking-widest uppercase">已與雲端同步</span>
                      </div>
-                     <button className="p-2 glass-effect rounded-lg hover:bg-white hover:text-blue-500 transition-all text-gray-400 border border-gray-100 shadow-sm">
-                        <Info className="w-4 h-4" />
-                     </button>
+                     
+                     {userData?.role === "USER" && (
+                       <Button 
+                         size="sm" 
+                         className="rounded-lg px-4"
+                         onClick={() => setRequestingItem(item)}
+                       >
+                         <ShoppingCart className="w-4 h-4 mr-2" />
+                         申請
+                       </Button>
+                     )}
+
+                     {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
+                       <button className="p-2 glass-effect rounded-lg hover:bg-white hover:text-blue-500 transition-all text-gray-400 border border-gray-100 shadow-sm">
+                          <Info className="w-4 h-4" />
+                       </button>
+                     )}
                   </div>
                 </div>
               )}
+
+              {/* Request Overlay */}
+              <AnimatePresence>
+                {requestingItem?.id === item.id && (
+                  <motion.div 
+                    initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                    animate={{ opacity: 1, backdropFilter: "blur(4px)" }}
+                    exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+                    className="absolute inset-0 z-20 bg-white/60 flex items-center justify-center p-6"
+                  >
+                    <motion.form 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      onSubmit={handleRequestSubmit}
+                      className="glass-card p-6 w-full space-y-4 bg-white/90 shadow-2xl"
+                    >
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-gray-800">物資申請</h4>
+                        <button type="button" onClick={() => setRequestingItem(null)}><X className="w-4 h-4 text-gray-400" /></button>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-500">申請品項: {item.name}</p>
+                        <p className="text-xs text-gray-500">可用餘額: {item.availableQuantity}</p>
+                      </div>
+                      <Input 
+                        label="申請數量" 
+                        type="number" 
+                        min="1" 
+                        max={item.availableQuantity}
+                        value={requestQuantity} 
+                        onChange={e => setRequestQuantity(e.target.value)} 
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <Button type="submit" className="flex-1" disabled={isRequesting}>
+                          {isRequesting ? "處理中..." : "確認申請"}
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={() => setRequestingItem(null)}>取消</Button>
+                      </div>
+                    </motion.form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           ))
         )}
