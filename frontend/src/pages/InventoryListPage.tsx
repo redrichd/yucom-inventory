@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Package, Plus, X, MapPin, Layers, TrendingUp, Info } from "lucide-react";
+import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -15,18 +15,37 @@ interface InventoryItem {
 }
 
 export default function InventoryListPage() {
-  const { userData, user } = useAuth();
+  const { userData, user, liffProfile } = useAuth();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", quantity: "" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userData?.region) return;
+    if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
+      getDocs(collection(db, "regions")).then(snap => {
+        const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+        setRegions(loadedRegions);
+        if (userData?.region && !selectedRegion) {
+          setSelectedRegion(userData.region);
+        } else if (loadedRegions.length > 0 && !selectedRegion) {
+          setSelectedRegion(loadedRegions[0].name);
+        }
+      });
+    } else if (userData?.region) {
+      setSelectedRegion(userData.region);
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    if (!selectedRegion) return;
 
     const q = query(
       collection(db, "inventory"),
-      where("region", "==", userData.region)
+      where("region", "==", selectedRegion)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -39,7 +58,7 @@ export default function InventoryListPage() {
     });
 
     return () => unsubscribe();
-  }, [userData?.region]);
+  }, [selectedRegion]);
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +69,7 @@ export default function InventoryListPage() {
         name: newItem.name,
         actualQuantity: Number(newItem.quantity),
         availableQuantity: Number(newItem.quantity),
-        region: userData.region,
+        region: selectedRegion || userData.region,
         category: "材料包",
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
@@ -61,6 +80,10 @@ export default function InventoryListPage() {
       console.error("錯誤：", error);
     }
   };
+
+  const filteredItems = items.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
@@ -73,21 +96,32 @@ export default function InventoryListPage() {
     <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-10">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 glass-card p-6 md:p-8">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 text-blue-600">
-            <Layers className="w-8 h-8" />
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
-              材料包庫存系統
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 text-gray-500 font-medium ml-1">
-            <MapPin className="w-4 h-4 text-red-100" />
-            <span>當前區域：</span>
-            <span className="text-gradient font-bold">{userData?.region || "未設定"}</span>
+        <div className="flex items-center gap-4">
+          {liffProfile?.pictureUrl ? (
+            <img src={liffProfile.pictureUrl} alt="Avatar" className="w-14 h-14 rounded-full border-4 border-white shadow-sm" />
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl border-4 border-white shadow-sm">
+              {userData?.displayName?.charAt(0) || "U"}
+            </div>
+          )}
+          <div className="space-y-1">
+            <div className="flex items-center gap-3 text-blue-600">
+              <Layers className="w-6 h-6 md:w-8 md:h-8" />
+              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">
+                材料包庫存系統
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 text-gray-500 font-medium ml-1 text-sm md:text-base">
+              <span className="font-bold text-gray-700">{userData?.displayName}</span>
+              <span className="text-gray-300">|</span>
+              <MapPin className="w-4 h-4 text-red-100" />
+              <span>當前區域：</span>
+              <span className="text-gradient font-bold">{selectedRegion || "未設定"}</span>
+            </div>
           </div>
         </div>
 
-        {userData?.role === "ADMIN" && (
+        {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
           <Button 
             onClick={() => setShowAddForm(!showAddForm)} 
             size="lg"
@@ -101,6 +135,25 @@ export default function InventoryListPage() {
           </Button>
         )}
       </div>
+
+      {/* Tabs for Admins */}
+      {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && regions.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {regions.map(r => (
+            <button
+              key={r.id}
+              onClick={() => setSelectedRegion(r.name)}
+              className={`px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+                selectedRegion === r.name 
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200 translate-y-[-2px]" 
+                  : "bg-white text-gray-600 hover:bg-blue-50 border border-gray-100 shadow-sm"
+              }`}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Add Form Section */}
       {showAddForm && (
@@ -166,18 +219,32 @@ export default function InventoryListPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative glass-card border-none bg-white/40">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-blue-500" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-11 pr-4 py-4 bg-transparent border-none rounded-xl text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          placeholder="搜尋品項名稱..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {/* Inventory Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
-        {items.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="col-span-full py-32 flex flex-col items-center justify-center glass-card border-dashed">
             <div className="p-6 bg-gray-100/30 rounded-full mb-4">
               <Package className="w-16 h-16 text-gray-300" />
             </div>
-            <p className="text-gray-400 text-xl font-bold">目前沒有庫存資料</p>
-            <p className="text-gray-300 text-sm mt-2">點擊上方按鈕開始建立您的第一筆庫存</p>
+            <p className="text-gray-400 text-xl font-bold">找不到符合的庫存資料</p>
+            {searchQuery === "" && <p className="text-gray-300 text-sm mt-2">點擊上方按鈕開始建立您的第一筆庫存</p>}
           </div>
         ) : (
-          items.map((item) => (
+          filteredItems.map((item) => (
             <div
               key={item.id}
               className="glass-card overflow-hidden group border-transparent hover:border-blue-300/50"
