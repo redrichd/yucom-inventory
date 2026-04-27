@@ -45,5 +45,11 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false; // Only written via Admin SDK / Cloud Functions
     }
+
+    // Regions collection rules
+    match /regions/{regionId} {
+      allow read: if isSignedIn();
+      allow write: if getUserData().role == 'SUPER_ADMIN';
+    }
   }
 }

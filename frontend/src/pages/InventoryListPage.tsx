@@ -34,6 +34,12 @@ export default function InventoryListPage() {
         } else if (loadedRegions.length > 0 && !selectedRegion) {
           setSelectedRegion(loadedRegions[0].name);
         }
+      }).catch(err => {
+        console.error("載入區域失敗:", err);
+        // 若失敗仍預設為自己的區域，避免卡住
+        if (userData?.region && !selectedRegion) {
+          setSelectedRegion(userData.region);
+        }
       });
     } else if (userData?.region) {
       setSelectedRegion(userData.region);
@@ -54,6 +60,9 @@ export default function InventoryListPage() {
         ...doc.data(),
       })) as InventoryItem[];
       setItems(itemList);
+      setLoading(false);
+    }, (error) => {
+      console.error("載入庫存失敗:", error);
       setLoading(false);
     });
 
@@ -88,7 +97,7 @@ export default function InventoryListPage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
       <div className="w-12 h-12 border-4 border-blue-400/30 border-t-blue-600 rounded-full animate-spin"></div>
-      <p className="text-gray-500 font-bold animate-pulse">載入優康庫存中...</p>
+      <p className="text-gray-500 font-bold animate-pulse">載入悠康庫存中...</p>
     </div>
   );
 
