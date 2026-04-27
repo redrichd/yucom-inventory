@@ -17,7 +17,7 @@
 **Project Type**: Web Application (Frontend + Serverless Functions)
 **Performance Goals**: 能夠順暢在手機版 LINE 中秒速開啟，並立刻載入區域庫存清單。
 **Constraints**: 必須處理並發 (Concurrency) 扣除庫存的問題。圖片上傳如失敗需有預設顯示 (Fallback)。
-**Scale/Scope**: 四大分處的一線員工及子管理員，最高支援千人規模。
+**Scale/Scope**: 三個初始區域（新莊區、三蘆區、板中永區）的一線員工及子管理員，最高支援千人規模。區域可由管理者動態擴充或更改名稱。
 
 ## Constitution Check
 
@@ -46,6 +46,10 @@
 
 ```text
 # Web application (Frontend + Firebase Functions 結構)
+.github/
+└── workflows/
+    └── firebase-deploy.yml # CI/CD Firestore Rules 等自動部署流程
+
 firebase/
 ├── functions/
 │   ├── src/

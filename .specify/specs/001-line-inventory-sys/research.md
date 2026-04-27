@@ -35,5 +35,5 @@
   - 這樣能確保不會發生物資被超額申請的 Race Conditions (Option A 的需求)。
 
 ### 6. Development Stack (Frontend)
-- **Decision**: [NEEDS CLARIFICATION or DEFAULT TO REACT/NEXT.JS] 假設前端使用 React UI (搭配 Vite 或 Next.js)。
+- **Decision**: 前端使用 React UI 搭配 Vite 建置。
 - **Rationale**: 生態系豐富，容易與 Firebase 整合 (Firebase Web SDK)，並且有許多適合 Mobile-first 的 UI library (如 TailwindCSS + shadcn/ui 或 MUI)。

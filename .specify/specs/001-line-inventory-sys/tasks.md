@@ -19,6 +19,7 @@
 - [x] T002 初始化 React 專案與依賴 (`frontend`)
 - [x] T003 [P] 設定 Firebase Admin SDK 與 Firebase Functions 環境 (`firebase/functions/src/index.ts`)
 - [x] T004 [P] 設定前端與後端的 Linting / Prettier 工具
+- [x] T045 [P] 設定 GitHub Actions CI/CD workflow：當 main 分支更新時，自動部署 Firestore Rules 與 Functions (`.github/workflows/firebase-deploy.yml`)
 
 ---
 
@@ -73,7 +74,7 @@
 ### Implementation for User Story 2
 
 - [x] T023 [P] [US2] 開發後台主版面 Layout 與側邊導覽列 (`frontend/src/components/layout/AdminLayout.tsx`)
-- [x] T024 [US2] 實作使用者管理介面：列表顯示區內成員並能執行「開通帳號」、「變更備註名與區域」操作 (`frontend/src/pages/admin/UserManagementPage.tsx`)
+- [x] T024 [US2] 實作使用者管理介面：列表顯示區內成員並能執行「開通帳號」、「變更備註名與區域」操作，且 **管理員 MUST 能透過下拉選單或頁籤跨區切換與檢視所有區域的成員** (`frontend/src/pages/admin/UserManagementPage.tsx`)
 - [x] T025 [US2] 實作庫存修正介面：允許管理員調整實際庫存，強制要求輸入原因並使用 Transaction 生產異動日誌 (`frontend/src/pages/admin/InventoryManagementPage.tsx`)
 - [x] T026 [US2] 撰寫庫存修正 (Transaction & 日誌生成) 之單元測試 (`frontend/src/features/inventory/adminInventory.test.ts`)
 - [x] T027 [P] [US2] 後端實作：當員工區域發生異動時，自動將所有 PENDING 申請單設為 REJECTED 的 Cloud Function (`firebase/functions/src/triggers/onUserRegionChanged.ts`)
@@ -101,6 +102,7 @@
 - [x] T036 [US3] 後端實作：監聽 inventory 文件異動，當 actualQuantity < safeQuantity 時寄發警報 Mail 的 Cloud Function (`firebase/functions/src/triggers/onInventoryBelowSafeLevel.ts`)
 - [x] T037 [US3] 撰寫安全存量警報之 Cloud Function 測試 (`firebase/functions/src/tests/onInventoryBelowSafeLevel.test.ts`)
 - [x] T038 [US3] 驗證 US3 核心流程之 Firestore Rules (Super Admin 權限) (`firebase/tests/us3_rules.test.ts`)
+- [x] T044 [US3] 實作動態區域管理介面：提供 UI 讓管理部經理新增、更名區域，並寫入 Firestore `regions` 集合 (`frontend/src/pages/admin/RegionManagementPage.tsx`)
 
 **Checkpoint**: All user stories should now be independently functional
 

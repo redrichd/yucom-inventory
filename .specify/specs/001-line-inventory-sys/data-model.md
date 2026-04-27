@@ -10,7 +10,7 @@
 - `uid`: string (LINE User ID, Primary Key)
 - `lineDisplayName`: string (來自 LINE 的原始名稱)
 - `displayName`: string (管理員校準後的備註名稱，預設同上)
-- `region`: string (所屬區域，例如：新莊中正、新莊化成、三蘆區、板中永區)
+- `region`: string (所屬區域名稱或ID，例如：新莊區、三蘆區)
 - `role`: string (`USER` 一線人員, `ADMIN` 子管理員, `SUPER_ADMIN` 管理部經理)
 - `status`: string (`PENDING` 待開通, `ACTIVE` 已核准, `SUSPENDED` 停權)
 - `createdAt`: timestamp
@@ -60,6 +60,14 @@
 - `reason`: string (變更理由，例如: 系統核准單號xxx、盤損、補貨)
 - `relatedRequestId`: string (若為核准發放，則關聯申請單 ID，手動修正可為 null)
 - `createdAt`: timestamp
+
+### 5. `regions` (區域)
+儲存系統中可用的區域清單，允許最高權限管理者動態擴充或更改名稱。
+
+- `id`: string (自動生成 Document ID)
+- `name`: string (區域名稱，如：新莊區、三蘆區、板中永區)
+- `createdAt`: timestamp
+- `updatedAt`: timestamp
 
 ## State Transitions (狀態移轉)
 

@@ -16,17 +16,33 @@ interface ManagedUser {
 export default function UserManagementPage() {
   const { userData } = useAuth();
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userData?.region) {
-      const q = query(collection(db, "users"), where("region", "==", userData.region));
+    // 載入所有區域清單
+    getDocs(collection(db, "regions")).then(snap => {
+      const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      setRegions(loadedRegions);
+      if (userData?.region && !selectedRegion) {
+        setSelectedRegion(userData.region);
+      } else if (loadedRegions.length > 0 && !selectedRegion) {
+        setSelectedRegion(loadedRegions[0].name);
+      }
+    });
+  }, [userData]);
+
+  useEffect(() => {
+    if (selectedRegion) {
+      setLoading(true);
+      const q = query(collection(db, "users"), where("region", "==", selectedRegion));
       getDocs(q).then((snap) => {
         setUsers(snap.docs.map(d => d.data() as ManagedUser));
         setLoading(false);
       });
     }
-  }, [userData]);
+  }, [selectedRegion]);
 
   const handleApprove = async (uid: string) => {
     await updateDoc(doc(db, "users", uid), { 
@@ -40,7 +56,18 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">區域使用者管理 ({userData?.region})</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">使用者管理</h1>
+        <select 
+          className="border border-gray-300 rounded px-3 py-2 bg-white text-gray-700"
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+        >
+          {regions.map(r => (
+            <option key={r.id} value={r.name}>{r.name}</option>
+          ))}
+        </select>
+      </div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-gray-50 border-b border-gray-200">
