@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -12,6 +13,7 @@ interface InventoryItem {
   actualQuantity: number;
   availableQuantity: number;
   region: string;
+  imageUrl?: string;
 }
 
 export default function InventoryListPage() {
@@ -22,12 +24,24 @@ export default function InventoryListPage() {
   const [selectedRegion, setSelectedRegion] = useState<string>("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", quantity: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
       getDocs(collection(db, "regions")).then(snap => {
-        const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+        let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+        
+        // 若 Firestore 尚未建立區域資料，先提供預設的三個區域
+        if (loadedRegions.length === 0) {
+          loadedRegions = [
+            { id: "default-1", name: "新莊區" },
+            { id: "default-2", name: "三蘆區" },
+            { id: "default-3", name: "板中永區" }
+          ];
+        }
+
         setRegions(loadedRegions);
         if (userData?.region && !selectedRegion) {
           setSelectedRegion(userData.region);
@@ -74,19 +88,32 @@ export default function InventoryListPage() {
     if (!user || !userData || !newItem.name || !newItem.quantity) return;
 
     try {
+      setIsUploading(true);
+      let imageUrl = "";
+
+      if (file) {
+        const storageRef = ref(storage, `inventory/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
       await addDoc(collection(db, "inventory"), {
         name: newItem.name,
         actualQuantity: Number(newItem.quantity),
         availableQuantity: Number(newItem.quantity),
         region: selectedRegion || userData.region,
         category: "材料包",
+        imageUrl: imageUrl,
         updatedAt: serverTimestamp(),
         updatedBy: user.uid,
       });
       setNewItem({ name: "", quantity: "" });
+      setFile(null);
       setShowAddForm(false);
     } catch (error) {
       console.error("錯誤：", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -117,7 +144,7 @@ export default function InventoryListPage() {
             <div className="flex items-center gap-3 text-blue-600">
               <Layers className="w-6 h-6 md:w-8 md:h-8" />
               <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">
-                材料包庫存系統
+                悠康庫存系統
               </h1>
             </div>
             <div className="flex items-center gap-2 text-gray-500 font-medium ml-1 text-sm md:text-base">
@@ -195,12 +222,24 @@ export default function InventoryListPage() {
               min="0"
             />
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">商品圖片 (選填)</label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer"
+            />
+          </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setShowAddForm(false)}>
+            <Button type="button" variant="secondary" onClick={() => { setShowAddForm(false); setFile(null); }}>
               取消
             </Button>
-            <Button type="submit">確認提交</Button>
+            <Button type="submit" disabled={isUploading}>
+              {isUploading ? "圖片上傳中..." : "確認提交"}
+            </Button>
           </div>
         </form>
       )}
@@ -260,12 +299,16 @@ export default function InventoryListPage() {
             >
               {/* Card Decoration */}
               <div className="h-32 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 flex items-center justify-center relative overflow-hidden group-hover:from-blue-100/50 group-hover:to-indigo-100/50 transition-colors">
+                 {item.imageUrl ? (
+                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                 ) : (
+                   <Package className="w-16 h-16 text-blue-200/60 group-hover:scale-110 group-hover:text-blue-300 transition-all duration-500" />
+                 )}
                  <div className="absolute top-2 right-2 flex gap-1">
                     <span className="px-2 py-0.5 rounded-full bg-white/60 text-[10px] font-bold text-blue-500 border border-blue-100 backdrop-blur-sm uppercase">
                       {item.region}
                     </span>
                  </div>
-                 <Package className="w-16 h-16 text-blue-200/60 group-hover:scale-110 group-hover:text-blue-300 transition-all duration-500" />
               </div>
 
               <div className="p-6 space-y-6">

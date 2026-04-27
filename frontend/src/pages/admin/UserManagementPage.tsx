@@ -23,7 +23,16 @@ export default function UserManagementPage() {
   useEffect(() => {
     // 載入所有區域清單
     getDocs(collection(db, "regions")).then(snap => {
-      const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      
+      if (loadedRegions.length === 0) {
+        loadedRegions = [
+          { id: "default-1", name: "新莊區" },
+          { id: "default-2", name: "三蘆區" },
+          { id: "default-3", name: "板中永區" }
+        ];
+      }
+      
       setRegions(loadedRegions);
       if (userData?.region && !selectedRegion) {
         setSelectedRegion(userData.region);
