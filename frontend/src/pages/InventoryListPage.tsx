@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search } from "lucide-react";
+import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search, Star, Trash2, Edit } from "lucide-react";
 
 interface InventoryItem {
   id: string;
@@ -14,6 +14,7 @@ interface InventoryItem {
   availableQuantity: number;
   region: string;
   imageUrl?: string;
+  isStarred?: boolean;
 }
 
 export default function InventoryListPage() {
@@ -27,6 +28,7 @@ export default function InventoryListPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
@@ -117,9 +119,50 @@ export default function InventoryListPage() {
     }
   };
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleUpdateProduct = async (id: string) => {
+    if (!editingItem) return;
+    try {
+      setIsUploading(true);
+      let newImageUrl = editingItem.imageUrl || "";
+      if (file) {
+        const storageRef = ref(storage, `inventory/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        newImageUrl = await getDownloadURL(storageRef);
+      }
+      await updateDoc(doc(db, "inventory", id), {
+        actualQuantity: editingItem.actualQuantity,
+        availableQuantity: editingItem.availableQuantity,
+        imageUrl: newImageUrl,
+        updatedAt: serverTimestamp(),
+      });
+      setEditingItem(null);
+      setFile(null);
+    } catch (error) {
+      console.error("更新失敗", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (window.confirm("確定要刪除這個庫存品項嗎？這個動作無法復原。")) {
+      await deleteDoc(doc(db, "inventory", id));
+    }
+  };
+
+  const handleToggleStar = async (item: InventoryItem) => {
+    await updateDoc(doc(db, "inventory", item.id), {
+      isStarred: !item.isStarred
+    });
+  };
+
+  const filteredItems = items
+    .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (a.isStarred && !b.isStarred) return -1;
+      if (!a.isStarred && b.isStarred) return 1;
+      return 0;
+    });
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center p-20 space-y-4">
@@ -295,7 +338,7 @@ export default function InventoryListPage() {
           filteredItems.map((item) => (
             <div
               key={item.id}
-              className="glass-card overflow-hidden group border-transparent hover:border-blue-300/50"
+              className={`glass-card overflow-hidden group border-transparent transition-all ${item.isStarred ? 'ring-2 ring-yellow-400 shadow-yellow-100' : 'hover:border-blue-300/50'}`}
             >
               {/* Card Decoration */}
               <div className="h-32 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 flex items-center justify-center relative overflow-hidden group-hover:from-blue-100/50 group-hover:to-indigo-100/50 transition-colors">
@@ -309,36 +352,69 @@ export default function InventoryListPage() {
                       {item.region}
                     </span>
                  </div>
-              </div>
 
-              <div className="p-6 space-y-6">
-                <div>
-                  <h3 className="font-black text-2xl text-gray-800 group-hover:text-gradient transition-all duration-300 line-clamp-1">
-                    {item.name}
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-blue-50/30 group-hover:bg-blue-50/50 transition-colors">
-                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">實際庫存</span>
-                    <span className="text-xl font-black text-gray-700">{item.actualQuantity}</span>
-                  </div>
-                  <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-green-50/30 group-hover:bg-green-50/50 transition-colors">
-                    <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">可用庫存</span>
-                    <span className="text-xl font-black text-green-700">{item.availableQuantity}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                   <div className="flex items-center gap-1.5 text-gray-400">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                      <span className="text-[10px] font-bold tracking-widest uppercase">已與雲端同步</span>
-                   </div>
-                   <button className="p-2 glass-effect rounded-xl hover:bg-white hover:text-blue-500 transition-all text-gray-400 border-none shadow-none">
-                      <Info className="w-4 h-4" />
+                 {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
+                   <button 
+                     onClick={() => handleToggleStar(item)}
+                     className="absolute top-2 left-2 p-1.5 rounded-full bg-white/60 hover:bg-white backdrop-blur-sm transition-all"
+                   >
+                     <Star className={`w-4 h-4 ${item.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`} />
                    </button>
-                </div>
+                 )}
               </div>
+
+              {editingItem?.id === item.id ? (
+                <div className="p-6 space-y-4 bg-blue-50/30">
+                  <h3 className="font-bold text-lg text-gray-800">{item.name}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="實際庫存" type="number" value={editingItem.actualQuantity.toString()} onChange={e => setEditingItem({...editingItem, actualQuantity: Number(e.target.value)})} />
+                    <Input label="可用庫存" type="number" value={editingItem.availableQuantity.toString()} onChange={e => setEditingItem({...editingItem, availableQuantity: Number(e.target.value)})} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">更換圖片 (選填)</label>
+                    <input type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] || null)} className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 cursor-pointer" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button className="flex-1" disabled={isUploading} onClick={() => handleUpdateProduct(item.id)}>{isUploading ? "儲存中..." : "儲存變更"}</Button>
+                    <Button variant="secondary" onClick={() => { setEditingItem(null); setFile(null); }}>取消</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 space-y-6">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-black text-2xl text-gray-800 group-hover:text-gradient transition-all duration-300 line-clamp-1 flex-1 pr-2">
+                      {item.name}
+                    </h3>
+                    {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
+                      <div className="flex gap-1">
+                        <button onClick={() => setEditingItem(item)} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteProduct(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-blue-50/30 group-hover:bg-blue-50/50 transition-colors">
+                      <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">實際庫存</span>
+                      <span className="text-xl font-black text-gray-700">{item.actualQuantity}</span>
+                    </div>
+                    <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-green-50/30 group-hover:bg-green-50/50 transition-colors">
+                      <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">可用庫存</span>
+                      <span className="text-xl font-black text-green-700">{item.availableQuantity}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                     <div className="flex items-center gap-1.5 text-gray-400">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                        <span className="text-[10px] font-bold tracking-widest uppercase">已與雲端同步</span>
+                     </div>
+                     <button className="p-2 glass-effect rounded-xl hover:bg-white hover:text-blue-500 transition-all text-gray-400 border-none shadow-none">
+                        <Info className="w-4 h-4" />
+                     </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}
