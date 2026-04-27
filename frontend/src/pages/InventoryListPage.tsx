@@ -6,6 +6,7 @@ import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search, Star, Trash2, Edit } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface InventoryItem {
   id: string;
@@ -222,10 +223,10 @@ export default function InventoryListPage() {
             <button
               key={r.id}
               onClick={() => setSelectedRegion(r.name)}
-              className={`px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-200 ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 ${
                 selectedRegion === r.name 
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200 translate-y-[-2px]" 
-                  : "bg-white text-gray-600 hover:bg-blue-50 border border-gray-100 shadow-sm"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200/50 translate-y-[0px]" 
+                  : "bg-white/80 text-gray-600 hover:bg-blue-50/80 border border-gray-200/60 shadow-sm"
               }`}
             >
               {r.name}
@@ -300,12 +301,12 @@ export default function InventoryListPage() {
           </span>
         </div>
         <div className="col-span-2 glass-card p-4 flex items-center gap-4">
-           <div className="p-3 bg-yellow-100/50 rounded-2xl">
+           <div className="p-3 bg-yellow-100/50 rounded-xl">
               <TrendingUp className="w-5 h-5 text-yellow-600" />
            </div>
            <div>
-              <p className="text-sm font-bold text-gray-700">庫存動態即時監控中</p>
-              <p className="text-xs text-gray-400">所有變動將自動同步至雲端</p>
+              <p className="text-sm font-semibold text-gray-700">庫存動態即時監控中</p>
+              <p className="text-xs text-gray-500">所有變動將自動同步至雲端</p>
            </div>
         </div>
       </div>
@@ -325,20 +326,32 @@ export default function InventoryListPage() {
       </div>
 
       {/* Inventory Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
+      <motion.div 
+        initial="hidden"
+        animate="visible"
+        variants={{
+          visible: { transition: { staggerChildren: 0.05 } },
+          hidden: {}
+        }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-10"
+      >
         {filteredItems.length === 0 ? (
-          <div className="col-span-full py-32 flex flex-col items-center justify-center glass-card border-dashed">
-            <div className="p-6 bg-gray-100/30 rounded-full mb-4">
-              <Package className="w-16 h-16 text-gray-300" />
+          <div className="col-span-full py-32 flex flex-col items-center justify-center glass-card border-dashed border-gray-300">
+            <div className="p-6 bg-gray-100/50 rounded-full mb-4">
+              <Package className="w-16 h-16 text-gray-400" />
             </div>
-            <p className="text-gray-400 text-xl font-bold">找不到符合的庫存資料</p>
-            {searchQuery === "" && <p className="text-gray-300 text-sm mt-2">點擊上方按鈕開始建立您的第一筆庫存</p>}
+            <p className="text-gray-500 text-lg font-medium">找不到符合的庫存資料</p>
+            {searchQuery === "" && <p className="text-gray-400 text-sm mt-2">點擊上方按鈕開始建立您的第一筆庫存</p>}
           </div>
         ) : (
           filteredItems.map((item) => (
-            <div
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+              }}
               key={item.id}
-              className={`glass-card overflow-hidden group border-transparent transition-all ${item.isStarred ? 'ring-2 ring-yellow-400 shadow-yellow-100' : 'hover:border-blue-300/50'}`}
+              className={`glass-card overflow-hidden group border-transparent transition-all ${item.isStarred ? 'ring-1 ring-yellow-400/50 shadow-lg shadow-yellow-100/30' : 'hover:border-blue-200/50 hover:shadow-lg hover:shadow-blue-100/30'}`}
             >
               {/* Card Decoration */}
               <div className="h-32 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 flex items-center justify-center relative overflow-hidden group-hover:from-blue-100/50 group-hover:to-indigo-100/50 transition-colors">
@@ -394,13 +407,13 @@ export default function InventoryListPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-blue-50/30 group-hover:bg-blue-50/50 transition-colors">
-                      <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">實際庫存</span>
-                      <span className="text-xl font-black text-gray-700">{item.actualQuantity}</span>
+                    <div className="p-3 glass-effect rounded-xl flex flex-col border border-blue-100/30 bg-blue-50/20 group-hover:bg-blue-50/40 transition-colors">
+                      <span className="text-[10px] font-medium text-blue-500 uppercase tracking-wider mb-1">實際庫存</span>
+                      <span className="text-xl font-bold text-gray-800">{item.actualQuantity}</span>
                     </div>
-                    <div className="p-3 glass-effect rounded-2xl flex flex-col border-none bg-green-50/30 group-hover:bg-green-50/50 transition-colors">
-                      <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider mb-1">可用庫存</span>
-                      <span className="text-xl font-black text-green-700">{item.availableQuantity}</span>
+                    <div className="p-3 glass-effect rounded-xl flex flex-col border border-green-100/30 bg-green-50/20 group-hover:bg-green-50/40 transition-colors">
+                      <span className="text-[10px] font-medium text-green-500 uppercase tracking-wider mb-1">可用庫存</span>
+                      <span className="text-xl font-bold text-gray-800">{item.availableQuantity}</span>
                     </div>
                   </div>
 
@@ -409,16 +422,16 @@ export default function InventoryListPage() {
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
                         <span className="text-[10px] font-bold tracking-widest uppercase">已與雲端同步</span>
                      </div>
-                     <button className="p-2 glass-effect rounded-xl hover:bg-white hover:text-blue-500 transition-all text-gray-400 border-none shadow-none">
+                     <button className="p-2 glass-effect rounded-lg hover:bg-white hover:text-blue-500 transition-all text-gray-400 border border-gray-100 shadow-sm">
                         <Info className="w-4 h-4" />
                      </button>
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           ))
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
