@@ -32,11 +32,27 @@ export default function RequestApprovalPage() {
   const [searchName, setSearchName] = useState("");
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
   const PAGE_SIZE = 10;
 
+  // 1. 載入區域清單
   useEffect(() => {
-    fetchRequests(true);
-  }, [userData, activeTab]);
+    getDocs(collection(db, "regions")).then(snap => {
+      const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      setRegions(loadedRegions);
+      if (userData?.region && !selectedRegion) {
+        setSelectedRegion(userData.region);
+      }
+    });
+  }, [userData]);
+
+  // 2. 當區域或標籤改變時，重新抓取
+  useEffect(() => {
+    if (selectedRegion) {
+      fetchRequests(true);
+    }
+  }, [selectedRegion, activeTab]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +72,7 @@ export default function RequestApprovalPage() {
     try {
       let q = query(
         collection(db, "requests"), 
-        where("region", "==", userData.region), 
+        where("region", "==", selectedRegion), 
         where("status", "==", activeTab)
       );
 
@@ -155,7 +171,16 @@ export default function RequestApprovalPage() {
           </button>
           <div>
             <h1 className="text-2xl font-black text-gray-800">審核與交付管理</h1>
-            <p className="text-sm text-gray-500 font-medium">{userData?.region} · 目前有 {requests.length} 筆資料</p>
+            <div className="flex items-center gap-2 mt-1">
+              <select 
+                className="text-xs font-bold bg-gray-100 border-none rounded-md py-1 pl-2 pr-8 focus:ring-0"
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+              >
+                {regions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+              </select>
+              <span className="text-xs text-gray-400 font-medium">· 目前有 {requests.length} 筆資料</span>
+            </div>
           </div>
         </div>
 
