@@ -46,13 +46,12 @@ function AuthenticatedRoutes() {
   );
 }
 
-import Background3D from "./components/ui/Background3D";
+
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Background3D />
         <AuthenticatedRoutes />
       </AuthProvider>
     </BrowserRouter>

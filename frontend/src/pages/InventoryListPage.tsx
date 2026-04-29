@@ -40,23 +40,35 @@ export default function InventoryListPage() {
 
   useEffect(() => {
     if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
-      getDocs(collection(db, "regions")).then(snap => {
-        let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      getDocs(collection(db, "regions")).then(async (snap) => {
+        const dbRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
         
-        // 若 Firestore 尚未建立區域資料，先提供預設的三個區域
-        if (loadedRegions.length === 0) {
-          loadedRegions = [
-            { id: "default-1", name: "新莊區" },
-            { id: "default-2", name: "三蘆區" },
-            { id: "default-3", name: "板中永區" }
-          ];
-        }
+        // 合併邏輯：始終包含預設區域，除非資料庫已有同名區域
+        const defaultNames = ["新莊區", "三蘆區", "板中永區"];
+        const finalRegions = [...dbRegions];
+        
+        defaultNames.forEach(name => {
+          if (!dbRegions.some(r => r.name === name)) {
+            finalRegions.push({ id: `default-${name}`, name });
+          }
+        });
 
-        setRegions(loadedRegions);
+        const defaultOrder = ["新莊區", "三蘆區", "板中永區"];
+        const sortedRegions = finalRegions.sort((a, b) => {
+          const idxA = defaultOrder.indexOf(a.name);
+          const idxB = defaultOrder.indexOf(b.name);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        setRegions(sortedRegions);
+        
         if (userData?.region && !selectedRegion) {
           setSelectedRegion(userData.region);
-        } else if (loadedRegions.length > 0 && !selectedRegion) {
-          setSelectedRegion(loadedRegions[0].name);
+        } else if (!selectedRegion && sortedRegions.length > 0) {
+          setSelectedRegion(sortedRegions[0].name);
         }
       }).catch(err => {
         console.error("載入區域失敗:", err);
@@ -265,17 +277,31 @@ export default function InventoryListPage() {
       {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && regions.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {regions.map(r => (
-            <button
-              key={r.id}
-              onClick={() => setSelectedRegion(r.name)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 ${
-                selectedRegion === r.name 
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200/50 translate-y-[0px]" 
-                  : "bg-white/80 text-gray-600 hover:bg-blue-50/80 border border-gray-200/60 shadow-sm"
-              }`}
-            >
-              {r.name}
-            </button>
+            <div key={r.id} className="relative group">
+              <button
+                onClick={() => setSelectedRegion(r.name)}
+                className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
+                  selectedRegion === r.name 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200/50" 
+                    : "bg-white/80 text-gray-600 hover:bg-blue-50/80 border border-gray-200/60 shadow-sm"
+                }`}
+              >
+                {r.name}
+                {userData?.role === "SUPER_ADMIN" && !["新莊區", "三蘆區", "板中永區"].includes(r.name) && (
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`確定要刪除「${r.name}」標籤嗎？`)) {
+                        deleteDoc(doc(db, "regions", r.id)).then(() => window.location.reload());
+                      }
+                    }}
+                    className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded-md transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </span>
+                )}
+              </button>
+            </div>
           ))}
           {userData?.role === "SUPER_ADMIN" && (
             <button
@@ -463,7 +489,7 @@ export default function InventoryListPage() {
                       <div className="flex gap-1 items-center">
                         <Button 
                           className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] py-1 px-2 rounded-md h-auto"
-                          onClick={() => setRequestItem(item)}
+                          onClick={() => setRequestingItem(item)}
                         >
                           申請
                         </Button>
@@ -510,53 +536,78 @@ export default function InventoryListPage() {
                 </div>
               )}
 
-              {/* Request Overlay */}
-              <AnimatePresence>
-                {requestingItem?.id === item.id && (
-                  <motion.div 
-                    initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                    animate={{ opacity: 1, backdropFilter: "blur(4px)" }}
-                    exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-                    className="absolute inset-0 z-20 bg-white/60 flex items-center justify-center p-6"
-                  >
-                    <motion.form 
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      onSubmit={handleRequestSubmit}
-                      className="glass-card p-6 w-full space-y-4 bg-white/90 shadow-2xl"
-                    >
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-gray-800">物資申請</h4>
-                        <button type="button" onClick={() => setRequestingItem(null)}><X className="w-4 h-4 text-gray-400" /></button>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-500">申請品項: {item.name}</p>
-                        <p className="text-xs text-gray-500">可用餘額: {item.availableQuantity}</p>
-                      </div>
-                      <Input 
-                        label="申請數量" 
-                        type="number" 
-                        min="1" 
-                        max={item.availableQuantity}
-                        value={requestQuantity} 
-                        onChange={e => setRequestQuantity(e.target.value)} 
-                        required
-                      />
-                      <div className="flex gap-2">
-                        <Button type="submit" className="flex-1" disabled={isRequesting}>
-                          {isRequesting ? "處理中..." : "確認申請"}
-                        </Button>
-                        <Button type="button" variant="secondary" onClick={() => setRequestingItem(null)}>取消</Button>
-                      </div>
-                    </motion.form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </motion.div>
           ))
         )}
       </motion.div>
+
+      {/* Global Request Modal */}
+      <AnimatePresence>
+        {requestingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setRequestingItem(null)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md glass-card p-8 bg-white shadow-2xl space-y-6"
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-black text-gray-800 tracking-tight">物資申請</h3>
+                <button 
+                  onClick={() => setRequestingItem(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="p-4 bg-blue-50 rounded-2xl space-y-1">
+                <p className="text-sm font-bold text-blue-800">申請品項：{requestingItem.name}</p>
+                <p className="text-xs text-blue-600 font-medium">所在區域：{requestingItem.region}</p>
+                <p className="text-xs text-blue-600 font-medium">可用庫存：{requestingItem.availableQuantity}</p>
+              </div>
+
+              <form onSubmit={handleRequestSubmit} className="space-y-6">
+                <Input
+                  label="欲申請數量"
+                  type="number"
+                  min="1"
+                  max={requestingItem.availableQuantity}
+                  value={requestQuantity}
+                  onChange={(e) => setRequestQuantity(e.target.value)}
+                  placeholder="請輸入數量"
+                  required
+                />
+                
+                <div className="flex gap-3">
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    className="flex-1 py-3"
+                    onClick={() => setRequestingItem(null)}
+                  >
+                    取消
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="flex-1 py-3 bg-blue-600 shadow-lg shadow-blue-200"
+                    disabled={isRequesting}
+                  >
+                    {isRequesting ? "處理中..." : "確認送出"}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

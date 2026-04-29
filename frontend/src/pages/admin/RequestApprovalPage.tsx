@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, getDoc, limit, startAfter, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, limit, startAfter, orderBy, addDoc } from "firebase/firestore";
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { Button } from "../../components/ui/Button";
 import { approveRequest, rejectRequest, completeRequest } from "../../features/requests/approvalService";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, ArrowLeft, User, Package, Calendar, Clock, Truck } from "lucide-react";
+import { Check, X, ArrowLeft, User, Package, Calendar, Clock, Truck, Plus, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Request {
@@ -45,11 +45,26 @@ export default function RequestApprovalPage() {
   // 1. 載入區域清單 (若資料庫為空則使用預設值)
   useEffect(() => {
     getDocs(collection(db, "regions")).then(snap => {
-      let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
-      if (loadedRegions.length === 0) {
-        loadedRegions = DEFAULT_REGIONS;
-      }
-      setRegions(loadedRegions);
+      const dbRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      const defaultNames = ["新莊區", "三蘆區", "板中永區"];
+      const finalRegions = [...dbRegions];
+      
+      defaultNames.forEach(name => {
+        if (!dbRegions.some(r => r.name === name)) {
+          finalRegions.push({ id: `default-${name}`, name });
+        }
+      });
+      
+      const defaultOrder = ["新莊區", "三蘆區", "板中永區"];
+      const sorted = finalRegions.sort((a, b) => {
+        const idxA = defaultOrder.indexOf(a.name);
+        const idxB = defaultOrder.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setRegions(sorted);
       
       // 預設選取使用者所屬區域
       if (userData?.region && selectedRegions.length === 0) {
@@ -210,13 +225,26 @@ export default function RequestApprovalPage() {
                 <button
                   key={r.id}
                   onClick={() => toggleRegion(r.name)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 ${
                     selectedRegions.includes(r.name)
                       ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                       : "bg-gray-100 text-gray-400 border-gray-100 hover:bg-gray-200"
                   }`}
                 >
                   {r.name}
+                  {userData?.role === "SUPER_ADMIN" && !["新莊區", "三蘆區", "板中永區"].includes(r.name) && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`確定要刪除「${r.name}」標籤嗎？`)) {
+                          deleteDoc(doc(db, "regions", r.id)).then(() => window.location.reload());
+                        }
+                      }}
+                      className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded-md transition-colors"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </span>
+                  )}
                 </button>
               ))}
               
@@ -243,7 +271,7 @@ export default function RequestApprovalPage() {
         <div className="flex bg-gray-100/50 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab("PENDING")}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
               activeTab === "PENDING" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -251,11 +279,27 @@ export default function RequestApprovalPage() {
           </button>
           <button
             onClick={() => setActiveTab("APPROVED")}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
               activeTab === "APPROVED" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             待交付
+          </button>
+          <button
+            onClick={() => setActiveTab("COMPLETED")}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              activeTab === "COMPLETED" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            已結案
+          </button>
+          <button
+            onClick={() => setActiveTab("REJECTED")}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+              activeTab === "REJECTED" ? "bg-white shadow-sm text-red-600" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            已取消
           </button>
         </div>
       </div>
@@ -311,7 +355,9 @@ export default function RequestApprovalPage() {
                 <div className="p-6 bg-gray-50 rounded-full text-gray-300">
                   <Check className="w-12 h-12" />
                 </div>
-                <p className="text-gray-400 font-medium text-lg">目前沒有任何{activeTab === "PENDING" ? "待審核" : "待交付"}的紀錄</p>
+                <p className="text-gray-400 font-medium text-lg">
+                  目前沒有任何{activeTab === "PENDING" ? "待審核" : activeTab === "APPROVED" ? "待交付" : activeTab === "COMPLETED" ? "已結案" : "已取消"}的紀錄
+                </p>
               </motion.div>
             ) : (
               requests.map(r => (
@@ -368,7 +414,7 @@ export default function RequestApprovalPage() {
                         拒絕
                       </Button>
                     </div>
-                  ) : (
+                  ) : activeTab === "APPROVED" ? (
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 min-w-[280px] justify-end bg-blue-50/50 p-2 rounded-lg border border-blue-100">
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
@@ -388,6 +434,16 @@ export default function RequestApprovalPage() {
                         <Truck className="w-4 h-4 mr-2" />
                         結案
                       </Button>
+                    </div>
+                  ) : activeTab === "COMPLETED" ? (
+                    <div className="flex items-center gap-2 text-green-600 font-bold bg-green-50 px-4 py-2 rounded-xl">
+                      <CheckCircle className="w-5 h-5" />
+                      已結案
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-red-600 font-bold bg-red-50 px-4 py-2 rounded-xl">
+                      <XCircle className="w-5 h-5" />
+                      已取消
                     </div>
                   )}
                 </motion.div>
