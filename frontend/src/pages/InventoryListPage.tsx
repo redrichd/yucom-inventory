@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, onSnapshot, getDocs, getDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
@@ -28,6 +28,7 @@ export default function InventoryListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>("");
+  const [globalLogo, setGlobalLogo] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", quantity: "" });
   const [file, setFile] = useState<File | null>(null);
@@ -39,6 +40,13 @@ export default function InventoryListPage() {
   const [isRequesting, setIsRequesting] = useState(false);
 
   useEffect(() => {
+    // 載入全域 LOGO
+    getDoc(doc(db, "settings", "global"))
+      .then(snap => {
+        if (snap.exists()) setGlobalLogo(snap.data().logoUrl);
+      })
+      .catch(err => console.warn("載入設定失敗:", err));
+
     if (userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") {
       getDocs(collection(db, "regions")).then(async (snap) => {
         const dbRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
@@ -215,16 +223,17 @@ export default function InventoryListPage() {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 glass-card p-6 md:p-8">
         <div className="flex items-center gap-4">
-          {liffProfile?.pictureUrl ? (
-            <img src={liffProfile.pictureUrl} alt="Avatar" className="w-14 h-14 rounded-full border-4 border-white shadow-sm" />
+          {globalLogo ? (
+            <div className="w-16 h-16 rounded-xl overflow-hidden shadow-md border border-white p-1 bg-white">
+              <img src={globalLogo} alt="Logo" className="w-full h-full object-contain" />
+            </div>
           ) : (
-            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl border-4 border-white shadow-sm">
+            <div className="w-16 h-16 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl border-2 border-white shadow-sm">
               {userData?.displayName?.charAt(0) || "U"}
             </div>
           )}
           <div className="space-y-1">
             <div className="flex items-center gap-3 text-blue-600">
-              <Layers className="w-6 h-6 md:w-8 md:h-8" />
               <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-gray-900">
                 悠康庫存系統
               </h1>

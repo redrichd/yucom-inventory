@@ -1,50 +1,27 @@
 import { useEffect, useState } from "react";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { storage, db } from "../../lib/firebase";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
-import { Plus, Trash2, MapPin } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 
 export default function GlobalSettingsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [logoUrl, setLogoUrl] = useState("");
-  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
-  const [newRegionName, setNewRegionName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchRegions();
+    fetchLogo();
   }, []);
 
-  const fetchRegions = async () => {
-    const q = query(collection(db, "regions"), orderBy("name"));
-    const snap = await getDocs(q);
-    setRegions(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
-  };
-
-  const handleAddRegion = async () => {
-    if (!newRegionName.trim()) return;
+  const fetchLogo = async () => {
     try {
-      setLoading(true);
-      await addDoc(collection(db, "regions"), { name: newRegionName.trim() });
-      setNewRegionName("");
-      await fetchRegions();
-      alert("區域新增成功！");
+      const snap = await getDoc(doc(db, "settings", "global"));
+      if (snap.exists()) {
+        setLogoUrl(snap.data().logoUrl);
+      }
     } catch (error) {
-      alert("新增失敗，請確認權限。");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteRegion = async (id: string, name: string) => {
-    if (!window.confirm(`確定要刪除「${name}」嗎？這可能會影響現有使用者的區域歸屬。`)) return;
-    try {
-      await deleteDoc(doc(db, "regions", id));
-      await fetchRegions();
-    } catch (error) {
-      alert("刪除失敗");
+      console.error("讀取 LOGO 失敗:", error);
     }
   };
 
@@ -55,78 +32,74 @@ export default function GlobalSettingsPage() {
       const storageRef = ref(storage, `logo/company_logo_${Date.now()}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
+      
+      // 將網址存入 Firestore
+      await setDoc(doc(db, "settings", "global"), { logoUrl: url }, { merge: true });
+      
       setLogoUrl(url);
-      alert("LOGO 上傳成功！");
+      setFile(null);
+      alert("LOGO 上傳並更新成功！");
     } catch (error) {
-      alert("上傳失敗");
+      console.error("上傳失敗:", error);
+      alert("上傳失敗，請檢查權限設定。");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl space-y-8 p-4">
-      <h1 className="text-2xl font-black text-gray-800">全域系統設定</h1>
+    <div className="max-w-2xl mx-auto space-y-8 p-4 md:p-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-black text-gray-800 tracking-tight">全域系統設定</h1>
+        <p className="text-gray-500 font-medium">在此管理系統的視覺與企業標識。</p>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* 區域管理 */}
-        <div className="glass-card p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">區域與站點管理</h2>
+      <div className="glass-card p-8 space-y-8 bg-white/80 backdrop-blur-xl border border-white shadow-2xl">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-blue-50 rounded-2xl text-blue-600">
+            <ImageIcon className="w-6 h-6" />
           </div>
-
-          <div className="flex gap-2">
-            <Input 
-              placeholder="輸入區域名稱 (例如：新莊區)" 
-              value={newRegionName}
-              onChange={(e) => setNewRegionName(e.target.value)}
-            />
-            <Button onClick={handleAddRegion} disabled={loading} className="shrink-0">
-              <Plus className="w-4 h-4 mr-1" /> 新增
-            </Button>
-          </div>
-
-          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-            {regions.length === 0 && <p className="text-gray-400 text-center py-4 text-sm">目前無自定義區域</p>}
-            {regions.map(r => (
-              <div key={r.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-blue-200 transition-all">
-                <span className="font-bold text-gray-700">{r.name}</span>
-                <button 
-                  onClick={() => handleDeleteRegion(r.id, r.name)}
-                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">企業標識設定</h2>
+            <p className="text-xs text-gray-400">這將更換首頁與瀏覽器分頁的圖示</p>
           </div>
         </div>
 
-        {/* LOGO 設定 */}
-        <div className="glass-card p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-              <MapPin className="w-5 h-5" />
+        <div className="space-y-6">
+          <div className="relative group">
+            <p className="text-sm text-gray-500 font-bold mb-3">目前的企業 LOGO：</p>
+            <div className="p-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex items-center justify-center min-h-[200px] transition-all group-hover:bg-blue-50/30 group-hover:border-blue-200">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Current Logo" className="max-h-32 object-contain drop-shadow-xl" />
+              ) : (
+                <div className="text-center space-y-2">
+                  <ImageIcon className="w-12 h-12 text-gray-200 mx-auto" />
+                  <p className="text-gray-400 text-sm">尚未設定企業 LOGO</p>
+                </div>
+              )}
             </div>
-            <h2 className="text-xl font-bold text-gray-800">企業標識設定</h2>
           </div>
 
           <div className="space-y-4">
-            <p className="text-sm text-gray-500 font-medium">目前的企業 LOGO：</p>
-            <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center min-h-[100px]">
-              {logoUrl ? <img src={logoUrl} alt="Logo" className="max-h-16" /> : <p className="text-gray-400 text-xs">尚未上傳 LOGO</p>}
+            <label className="block text-sm font-bold text-gray-700">選擇新圖片</label>
+            <div className="flex flex-col gap-4">
+              <input 
+                type="file" 
+                accept="image/*"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-2xl file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 transition-all file:cursor-pointer"
+                onChange={e => setFile(e.target.files?.[0] || null)} 
+              />
+              <Button 
+                onClick={handleUpload} 
+                disabled={loading || !file} 
+                className="w-full py-4 text-lg bg-gray-900 hover:bg-black shadow-xl shadow-gray-200"
+              >
+                {loading ? "正在處理中..." : "上傳並更新 LOGO"}
+              </Button>
             </div>
-            <input 
-              type="file" 
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              onChange={e => setFile(e.target.files?.[0] || null)} 
-            />
-            <Button onClick={handleUpload} disabled={loading || !file} className="w-full">
-              上傳並更新 LOGO
-            </Button>
+            <p className="text-[10px] text-gray-400 text-center italic">
+              建議上傳正方形且背景透明的 PNG 檔案，以獲得最佳顯示效果。
+            </p>
           </div>
         </div>
       </div>

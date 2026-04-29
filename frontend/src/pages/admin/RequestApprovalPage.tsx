@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, doc, getDoc, limit, startAfter, orderBy, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, limit, startAfter, orderBy, addDoc, deleteDoc } from "firebase/firestore";
 import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from "../../features/auth/AuthProvider";
@@ -26,7 +26,7 @@ export default function RequestApprovalPage() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED">("PENDING");
+  const [activeTab, setActiveTab] = useState<"PENDING" | "APPROVED" | "COMPLETED" | "REJECTED">("PENDING");
   const [deliveryDates, setDeliveryDates] = useState<Record<string, string>>({});
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
   const [searchName, setSearchName] = useState("");
@@ -36,11 +36,7 @@ export default function RequestApprovalPage() {
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const PAGE_SIZE = 10;
 
-  const DEFAULT_REGIONS = [
-    { id: "default-1", name: "新莊區" },
-    { id: "default-2", name: "三蘆區" },
-    { id: "default-3", name: "板中永區" }
-  ];
+
 
   // 1. 載入區域清單 (若資料庫為空則使用預設值)
   useEffect(() => {
@@ -50,7 +46,7 @@ export default function RequestApprovalPage() {
       const finalRegions = [...dbRegions];
       
       defaultNames.forEach(name => {
-        if (!dbRegions.some(r => r.name === name)) {
+        if (!dbRegions.some((r: any) => r.name === name)) {
           finalRegions.push({ id: `default-${name}`, name });
         }
       });
@@ -70,7 +66,7 @@ export default function RequestApprovalPage() {
       if (userData?.region && selectedRegions.length === 0) {
         setSelectedRegions([userData.region]);
       } else if (selectedRegions.length === 0) {
-        setSelectedRegions(loadedRegions.map(r => r.name)); // 預設全選
+        setSelectedRegions(sorted.map((r: any) => r.name)); // 預設全選
       }
     });
   }, [userData]);

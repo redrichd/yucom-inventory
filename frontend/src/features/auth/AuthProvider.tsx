@@ -37,13 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubscribeFirestore: () => void;
 
     async function setupAuth() {
-      try {
-        await initLiff();
+      // LIFF 初始化不應阻塞 Firebase 驗證
+      initLiff().then(async () => {
         const profile = await getLiffProfile();
         setLiffProfile(profile);
-      } catch (err) {
-        console.error("LIFF setup failed", err);
-      }
+      }).catch(err => {
+        console.warn("LIFF initialization skipped or failed:", err);
+      });
 
       onAuthStateChanged(auth, (firebaseUser) => {
         setUser(firebaseUser);
