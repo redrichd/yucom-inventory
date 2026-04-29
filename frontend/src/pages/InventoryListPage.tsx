@@ -164,8 +164,7 @@ export default function InventoryListPage() {
     });
   };
 
-    });
-  };
+
 
   const handleRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

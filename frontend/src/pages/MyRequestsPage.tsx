@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, orderBy, limit, startAfter, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck } from "lucide-react";
@@ -149,7 +150,7 @@ export default function MyRequestsPage() {
                     <div className="flex items-center gap-4 mt-1 text-sm text-gray-400 font-medium">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>{r.createdAt?.toDate().toLocaleDateString()}</span>
+                        <span>{r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString() : "---"}</span>
                       </div>
                     </div>
                   </div>

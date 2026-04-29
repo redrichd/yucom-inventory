@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createRequest } from "./requestService";
 import { runTransaction } from "firebase/firestore";
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { createRequest } from "./requestService";
 
 vi.mock("firebase/firestore");
 vi.mock("../../lib/firebase", () => ({
@@ -23,7 +24,7 @@ describe("requestService", () => {
     };
     (runTransaction as any).mockImplementation((_db: any, callback: any) => callback(mockTransaction));
 
-    await createRequest("user1", "item1", 2);
+    await createRequest("user1", "Test User", "item1", 2);
 
     expect(mockTransaction.update).toHaveBeenCalledWith(expect.anything(), {
       availableQuantity: 8
@@ -42,6 +43,6 @@ describe("requestService", () => {
     };
     (runTransaction as any).mockImplementation((_db: any, callback: any) => callback(mockTransaction));
 
-    await expect(createRequest("user1", "item1", 5)).rejects.toThrow("可用庫存不足");
+    await expect(createRequest("user1", "Test User", "item1", 5)).rejects.toThrow("可用庫存不足");
   });
 });
