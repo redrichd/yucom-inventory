@@ -33,26 +33,50 @@ export default function RequestApprovalPage() {
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string>("");
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const PAGE_SIZE = 10;
 
-  // 1. 載入區域清單
+  const DEFAULT_REGIONS = [
+    { id: "default-1", name: "新莊區" },
+    { id: "default-2", name: "三蘆區" },
+    { id: "default-3", name: "板中永區" }
+  ];
+
+  // 1. 載入區域清單 (若資料庫為空則使用預設值)
   useEffect(() => {
     getDocs(collection(db, "regions")).then(snap => {
-      const loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      if (loadedRegions.length === 0) {
+        loadedRegions = DEFAULT_REGIONS;
+      }
       setRegions(loadedRegions);
-      if (userData?.region && !selectedRegion) {
-        setSelectedRegion(userData.region);
+      
+      // 預設選取使用者所屬區域
+      if (userData?.region && selectedRegions.length === 0) {
+        setSelectedRegions([userData.region]);
+      } else if (selectedRegions.length === 0) {
+        setSelectedRegions(loadedRegions.map(r => r.name)); // 預設全選
       }
     });
   }, [userData]);
 
-  // 2. 當區域或標籤改變時，重新抓取
+  // 2. 當選擇區域或標籤改變時，重新抓取
   useEffect(() => {
-    if (selectedRegion) {
+    if (selectedRegions.length > 0) {
       fetchRequests(true);
+    } else {
+      setRequests([]);
+      setLoading(false);
     }
-  }, [selectedRegion, activeTab]);
+  }, [selectedRegions, activeTab]);
+
+  const toggleRegion = (regionName: string) => {
+    setSelectedRegions(prev => 
+      prev.includes(regionName) 
+        ? prev.filter(r => r !== regionName)
+        : [...prev, regionName]
+    );
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +96,7 @@ export default function RequestApprovalPage() {
     try {
       let q = query(
         collection(db, "requests"), 
-        where("region", "==", selectedRegion), 
+        where("region", "in", selectedRegions), 
         where("status", "==", activeTab)
       );
 
@@ -171,15 +195,21 @@ export default function RequestApprovalPage() {
           </button>
           <div>
             <h1 className="text-2xl font-black text-gray-800">審核與交付管理</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <select 
-                className="text-xs font-bold bg-gray-100 border-none rounded-md py-1 pl-2 pr-8 focus:ring-0"
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-              >
-                {regions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-              </select>
-              <span className="text-xs text-gray-400 font-medium">· 目前有 {requests.length} 筆資料</span>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {regions.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => toggleRegion(r.name)}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                    selectedRegions.includes(r.name)
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-gray-100 text-gray-400 border-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  {r.name}
+                </button>
+              ))}
+              <span className="text-xs text-gray-400 font-medium ml-2">· 共 {requests.length} 筆</span>
             </div>
           </div>
         </div>
