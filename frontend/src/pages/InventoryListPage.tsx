@@ -277,6 +277,22 @@ export default function InventoryListPage() {
               {r.name}
             </button>
           ))}
+          {userData?.role === "SUPER_ADMIN" && (
+            <button
+              onClick={() => {
+                const name = prompt("請輸入新區域名稱：");
+                if (name) {
+                  import("firebase/firestore").then(({ collection, addDoc }) => {
+                    addDoc(collection(db, "regions"), { name }).then(() => window.location.reload());
+                  });
+                }
+              }}
+              className="px-3 py-2 rounded-lg bg-white/80 text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-gray-200/60 shadow-sm transition-all"
+              title="新增區域"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
@@ -444,7 +460,13 @@ export default function InventoryListPage() {
                       {item.name}
                     </h3>
                     {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
+                        <Button 
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] py-1 px-2 rounded-md h-auto"
+                          onClick={() => setRequestItem(item)}
+                        >
+                          申請
+                        </Button>
                         <button onClick={() => setEditingItem(item)} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors"><Edit className="w-4 h-4" /></button>
                         <button onClick={() => handleDeleteProduct(item.id)} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                       </div>

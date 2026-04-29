@@ -94,24 +94,34 @@ export default function RequestApprovalPage() {
     }
     
     try {
-      let q = query(
-        collection(db, "requests"), 
-        where("region", "in", selectedRegions), 
-        where("status", "==", activeTab)
-      );
+      let snap;
+      try {
+        let q = query(
+          collection(db, "requests"), 
+          where("region", "in", selectedRegions), 
+          where("status", "==", activeTab)
+        );
 
-      // 如果有輸入搜尋名稱
-      if (searchName.trim()) {
-        q = query(q, where("userName", "==", searchName.trim()));
+        if (searchName.trim()) {
+          q = query(q, where("userName", "==", searchName.trim()));
+        }
+
+        q = query(q, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+
+        if (!isFirstPage && lastDoc) {
+          q = query(q, startAfter(lastDoc));
+        }
+        snap = await getDocs(q);
+      } catch (e: any) {
+        console.warn("複合查詢失敗（可能是缺少索引），嘗試簡易查詢...", e);
+        const fallbackQ = query(
+          collection(db, "requests"), 
+          where("region", "in", selectedRegions), 
+          where("status", "==", activeTab),
+          limit(PAGE_SIZE)
+        );
+        snap = await getDocs(fallbackQ);
       }
-
-      q = query(q, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
-
-      if (!isFirstPage && lastDoc) {
-        q = query(q, startAfter(lastDoc));
-      }
-
-      const snap = await getDocs(q);
       const rawRequests = snap.docs.map(d => ({ 
         id: d.id, 
         userDisplayName: (d.data() as any).userName || "載入中...", // 先用快照名稱
@@ -209,6 +219,22 @@ export default function RequestApprovalPage() {
                   {r.name}
                 </button>
               ))}
+              
+              {userData?.role === "SUPER_ADMIN" && (
+                <button
+                  onClick={() => {
+                    const name = prompt("請輸入新區域名稱：");
+                    if (name) {
+                      addDoc(collection(db, "regions"), { name }).then(() => window.location.reload());
+                    }
+                  }}
+                  className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                  title="新增區域"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
+              
               <span className="text-xs text-gray-400 font-medium ml-2">· 共 {requests.length} 筆</span>
             </div>
           </div>
