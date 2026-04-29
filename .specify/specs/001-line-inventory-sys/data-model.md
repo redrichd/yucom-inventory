@@ -12,7 +12,8 @@
 - `displayName`: string (管理員校準後的備註名稱，預設同上)
 - `region`: string (所屬區域名稱或ID，例如：新莊區、三蘆區)
 - `role`: string (`USER` 一線人員, `ADMIN` 子管理員, `SUPER_ADMIN` 管理部經理)
-- `status`: string (`PENDING` 待開通, `ACTIVE` 已核准, `SUSPENDED` 停權)
+- `status`: string (保留備註用，主要權限判斷改用 isApproved)
+- `isApproved`: boolean (主要權限開關，true 代表已核准開通)
 - `createdAt`: timestamp
 - `updatedAt`: timestamp
 
@@ -41,9 +42,11 @@
 - `region`: string (申請當下的所屬區域快照)
 - `quantity`: number (申請數量)
 - `note`: string (申請留言/備註)
-- `status`: string (`PENDING` 待核准, `APPROVED` 已發放, `REJECTED` 已拒絕/取消)
+- `status`: string (`PENDING` 待核准, `APPROVED` 已核准/待交付, `COMPLETED` 已結案/已交付, `REJECTED` 已拒絕/取消)
+- `deliveryDate`: string (交付日期，格式例如：2026-04-29)
 - `reviewedBy`: string (審核管理員的 userId，可為 null)
 - `reviewedAt`: timestamp (審核時間，可為 null)
+- `completedAt`: timestamp (結案時間，可為 null)
 - `createdAt`: timestamp
 
 ### 4. `transactions` (異動日誌)
@@ -73,10 +76,11 @@
 
 ### 申請單 (Request)
 1. **建立**: `PENDING`，並且執行 Transaction `inventory.availableQuantity -= quantity`
-2. **核准 (`APPROVED`)**: 執行 Transaction `inventory.actualQuantity -= quantity`，並產生一筆 `transactions`。
-3. **拒絕 (`REJECTED`)**: 執行 Transaction `inventory.availableQuantity += quantity` (退回可用庫存)。
+2. **核准 (`APPROVED`)**: 執行 Transaction `inventory.actualQuantity -= quantity` (扣除實際庫存)，並產生一筆 `transactions`。此時狀態進入「待交付」。
+3. **結案 (`COMPLETED`)**: 管理員填寫 `deliveryDate` 並結案。
+4. **拒絕 (`REJECTED`)**: 執行 Transaction `inventory.availableQuantity += quantity` (退回可用庫存)。
 4. **自動取消**: 當會員區域 `users.region` 被更改時，觸發 Cloud Function，將該 user 所有狀態為 `PENDING` 的申請單改為 `REJECTED`，並加回 `availableQuantity`。
 
 ### 使用者帳號 (User)
-1. **初次登入**: 建立文件，狀態為 `PENDING`。
-2. **管理員開通**: 狀態改為 `ACTIVE`。
+1. **初次登入**: 建立文件，`isApproved` 為 `false`。
+2. **管理員開通**: 將 `isApproved` 改為 `true`。

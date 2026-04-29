@@ -10,6 +10,7 @@ import RequestApprovalPage from "./pages/admin/RequestApprovalPage";
 import GlobalSettingsPage from "./pages/admin/GlobalSettingsPage";
 import TransactionLogPage from "./pages/admin/TransactionLogPage";
 import LoginPage from "./pages/LoginPage";
+import MyRequestsPage from "./pages/MyRequestsPage";
 
 function AuthenticatedRoutes() {
   const { userData, user, loading } = useAuth();
@@ -31,6 +32,7 @@ function AuthenticatedRoutes() {
   return (
     <Routes>
       <Route path="/" element={<InventoryListPage />} />
+      <Route path="/my-requests" element={<MyRequestsPage />} />
       {/* 管理員路徑 */}
       <Route path="/admin" element={<AdminLayout><Navigate to="/admin/users" /></AdminLayout>} />
       <Route path="/admin/users" element={<AdminLayout><UserManagementPage /></AdminLayout>} />

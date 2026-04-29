@@ -37,3 +37,13 @@
 ### 6. Development Stack (Frontend)
 - **Decision**: 前端使用 React UI 搭配 Vite 建置。
 - **Rationale**: 生態系豐富，容易與 Firebase 整合 (Firebase Web SDK)，並且有許多適合 Mobile-first 的 UI library (如 TailwindCSS + shadcn/ui 或 MUI)。
+
+### 7. 歷史紀錄載入機制 (Session 2026-04-29)
+- **Decision**: 實作分頁或無限滾動，並在後台支援以申請人名稱搜尋。預設不一次撈出所有歷史。
+- **Rationale**: 歷史資料會隨時間線性增長，一次抓取所有申請紀錄會導致 Firebase 讀取次數飆升與前端載入過慢。分頁或動態載入能限制初始讀取成本（例如每次取 20 筆），並滿足管理員針對單一員工的歷史追溯需求。
+- **Alternatives considered**: 僅載入近 30 天資料（落選，因為實務上仍可能需要查看特定員工更久以前的紀錄）。
+
+### 8. 交付結案日期 (Session 2026-04-29)
+- **Decision**: 允許管理員回溯補登（填寫過去的日期）。
+- **Rationale**: 實務中，物資交付不一定能即時在系統上點擊結案。允許管理員根據實際發放的日期進行回溯補登，有助於保持資料與實體作業的一致性。
+- **Alternatives considered**: 強制只能填寫當天或未來日期（落選，缺乏實務彈性）。

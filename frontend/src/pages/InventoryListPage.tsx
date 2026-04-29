@@ -173,7 +173,7 @@ export default function InventoryListPage() {
 
     try {
       setIsRequesting(true);
-      await createRequest(user.uid, requestingItem.id, Number(requestQuantity));
+      await createRequest(user.uid, userData?.displayName || "未知用戶", requestingItem.id, Number(requestQuantity));
       setRequestingItem(null);
       setRequestQuantity("1");
       alert("申請成功，請等待管理員審核！");
@@ -228,7 +228,7 @@ export default function InventoryListPage() {
           </div>
         </div>
 
-        {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") && (
+        {(userData?.role === "ADMIN" || userData?.role === "SUPER_ADMIN") ? (
           <div className="flex gap-3 w-full md:w-auto">
             <Button 
               variant="secondary"
@@ -247,6 +247,16 @@ export default function InventoryListPage() {
               ) : (
                 <><Plus className="w-5 h-5 mr-2" /> 新增庫存品項</>
               )}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-3 w-full md:w-auto">
+            <Button 
+              variant="secondary"
+              onClick={() => navigate("/my-requests")}
+              className="flex-1 md:flex-none bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200"
+            >
+              <Package className="w-5 h-5 mr-2" /> 我的申請紀錄
             </Button>
           </div>
         )}

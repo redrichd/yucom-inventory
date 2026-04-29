@@ -27,8 +27,8 @@ jobs:
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_YUCOM_INVENTORY }}'
 
-      - name: Deploy Firestore Rules
-        run: firebase deploy --only firestore:rules --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      - name: Deploy Firestore and Storage Rules
+        run: firebase deploy --only firestore:rules,storage --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
         
       # 若後續有需要自動部署 Functions，可取消下方程式碼註解
       # - name: Install Functions Dependencies

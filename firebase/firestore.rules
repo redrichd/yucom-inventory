@@ -13,7 +13,7 @@ service cloud.firestore {
     }
     
     function isActive() {
-      return getUserData().status == 'ACTIVE' && getUserData().isApproved == true;
+      return getUserData().isApproved == true;
     }
     
     function isAdmin() {

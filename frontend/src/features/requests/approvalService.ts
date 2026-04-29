@@ -66,3 +66,19 @@ export async function rejectRequest(requestId: string, adminId: string) {
     });
   });
 }
+
+export async function completeRequest(requestId: string, adminId: string, deliveryDate: string) {
+  return runTransaction(db, async (transaction) => {
+    const requestRef = doc(db, "requests", requestId);
+    const requestSnap = await transaction.get(requestRef);
+    if (!requestSnap.exists()) throw new Error("申請單不存在");
+    
+    // Mark request as completed with delivery date
+    transaction.update(requestRef, {
+      status: "COMPLETED",
+      completedAt: serverTimestamp(),
+      deliveryDate,
+      adminId
+    });
+  });
+}

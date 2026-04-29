@@ -1,7 +1,7 @@
 import { collection, runTransaction, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
-export async function createRequest(userId: string, itemId: string, quantity: number) {
+export async function createRequest(userId: string, userName: string, itemId: string, quantity: number) {
   return runTransaction(db, async (transaction) => {
     const itemRef = doc(db, "inventory", itemId);
     const itemSnap = await transaction.get(itemRef);
@@ -24,6 +24,7 @@ export async function createRequest(userId: string, itemId: string, quantity: nu
     const requestRef = doc(collection(db, "requests"));
     transaction.set(requestRef, {
       userId,
+      userName,
       itemId,
       itemName: itemData.name,
       quantity,

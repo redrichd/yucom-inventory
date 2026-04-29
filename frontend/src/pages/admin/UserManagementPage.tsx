@@ -92,13 +92,13 @@ export default function UserManagementPage() {
               <tr key={u.uid}>
                 <td className="px-6 py-4">{u.displayName}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {u.status}
+                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.isApproved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {u.isApproved ? '已核准' : '待審核'}
                   </span>
                 </td>
                 <td className="px-6 py-4">{u.region}</td>
                 <td className="px-6 py-4">
-                  {u.status === 'PENDING' && (
+                  {!u.isApproved && (
                     <Button size="sm" onClick={() => handleApprove(u.uid)}>核准開通</Button>
                   )}
                 </td>

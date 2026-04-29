@@ -5,7 +5,7 @@
 
 ## Summary
 
-本專案旨在建立一個基於 LINE LIFF 與 Firebase (Firestore, Storage, Cloud Functions) 的行動端庫存管理系統。核心目標為透過 LINE 快速 SSO 註冊入會，並由管理員進行身分開通與區域校準。員工可以在手機上快速確認貨架精確位置及照片，並發起物資領用申請（扣除可用庫存但不馬上扣除實際庫存）。管理員核准後正式扣除實際庫存，並將每一次處理與修正動作寫入 Append-only 的異動日誌以供核查。
+本專案旨在建立一個基於 LINE LIFF 與 Firebase (Firestore, Storage, Cloud Functions) 的行動端庫存管理系統。核心目標為透過 LINE 快速 SSO 註冊入會，並由管理員進行身分開通（單一 `isApproved` 開關）與區域校準。員工可以在手機上快速確認貨架精確位置及照片，並發起物資領用申請。管理員核准後正式扣除實際庫存，並可於「待交付清單」中填寫交付日期完成結案。使用者亦可透過「我的申請紀錄」追蹤歷史狀態。每一次處理與修正動作皆寫入 Append-only 的異動日誌以供核查。
 
 ## Technical Context
 
@@ -15,8 +15,8 @@
 **Testing**: Jest (Unit testing), Firebase Emulator Suite (Firestore Rules & Functions)
 **Target Platform**: Mobile (LINE LIFF in-app browser) / Web (Admin Dashboard)
 **Project Type**: Web Application (Frontend + Serverless Functions)
-**Performance Goals**: 能夠順暢在手機版 LINE 中秒速開啟，並立刻載入區域庫存清單。
-**Constraints**: 必須處理並發 (Concurrency) 扣除庫存的問題。圖片上傳如失敗需有預設顯示 (Fallback)。
+**Performance Goals**: 能夠順暢在手機版 LINE 中秒速開啟，並立刻載入區域庫存清單。歷史紀錄清單需採用分頁或無限滾動以維持長期效能。
+**Constraints**: 必須處理並發 (Concurrency) 扣除庫存的問題。圖片上傳如失敗需有預設顯示 (Fallback)。歷史資料量大時需避免 Firestore 讀取超載。
 **Scale/Scope**: 三個初始區域（新莊區、三蘆區、板中永區）的一線員工及子管理員，最高支援千人規模。區域可由管理者動態擴充或更改名稱。
 
 ## Constitution Check
@@ -81,6 +81,7 @@ frontend/
 - **Frontend Unit Tests**: 針對可用量計算 (`availableQuantity` 運算) 及庫存狀態顯示撰寫 Jest/React Testing Library 測試。指令：`cd frontend && npm test`。
 
 ### Manual Verification
-- **LIFF 登入測試**: 建立測試版 LIFF ID，透過手機版 LINE 打開 URL，驗證是否能正確取得 LINE Profile (DisplayName, UserId) 並正確寫入 Firestore（狀態應預設為 PENDING）。
-- **後台管理員放行測試**: 由 `SUPER_ADMIN` 的開發者帳號進入介面，將新建的 PENDING 帳號改為 ACTIVE，並手動驗證下一次登入時是否放行讀取庫存權限。
+- **LIFF 登入測試**: 建立測試版 LIFF ID，透過手機版 LINE 打開 URL，驗證是否能正確取得 LINE Profile (DisplayName, UserId) 並正確寫入 Firestore（狀態應預設為 未核准）。
+- **後台管理員放行測試**: 由 `SUPER_ADMIN` 的開發者帳號進入介面，將新建的帳號 `isApproved` 設為 true，並手動驗證下一次登入時是否放行讀取庫存權限。
 - **庫存競爭測試 (Concurrency)**: 同一位使用者或多位使用者在多個瀏覽器分頁同時點擊申領同一個剩餘數量 1 的物資，確保系統僅通過第一個請求，其餘請求跳出「庫存不足」警告且資料庫未產生超額待核准數量。
+- **交付結案與歷史查詢測試**: 測試審核流程的兩階段（核准、結案），輸入交付日期後，驗證「我的申請紀錄」中是否能正確顯示該日期與狀態；驗證後台是否能以「申請人」名稱搜尋過濾歷史單據。
