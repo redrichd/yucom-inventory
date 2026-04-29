@@ -5,7 +5,7 @@ import { db, storage } from "../lib/firebase";
 import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Package, Plus, X, MapPin, Layers, TrendingUp, Info, Search, Star, Trash2, Edit } from "lucide-react";
+import { Package, Plus, X, MapPin, TrendingUp, Info, Search, Star, Trash2, Edit } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createRequest } from "../features/requests/requestService";
@@ -22,7 +22,7 @@ interface InventoryItem {
 }
 
 export default function InventoryListPage() {
-  const { userData, user, liffProfile } = useAuth();
+  const { userData, user } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
