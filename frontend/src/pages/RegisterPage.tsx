@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../features/auth/AuthProvider";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
@@ -10,6 +10,30 @@ export default function RegisterPage() {
   const [name, setName] = useState(liffProfile?.displayName || "");
   const [region, setRegion] = useState("");
   const [loading, setLoading] = useState(false);
+  const [regions, setRegions] = useState<{id: string, name: string}[]>([]);
+
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const { collection, getDocs } = await import("firebase/firestore");
+        const snap = await getDocs(collection(db, "regions"));
+        let loadedRegions = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+        
+        // Fallback to default if empty
+        if (loadedRegions.length === 0) {
+          loadedRegions = [
+            { id: "def1", name: "新莊區" },
+            { id: "def2", name: "三蘆區" },
+            { id: "def3", name: "板中永區" }
+          ];
+        }
+        setRegions(loadedRegions);
+      } catch (error) {
+        console.error("Fetch regions failed", error);
+      }
+    };
+    fetchRegions();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +83,9 @@ export default function RegisterPage() {
                 required
               >
                 <option value="">請選擇區域</option>
-                <option value="新莊區">新莊區</option>
-            <option value="三蘆區">三蘆區</option>
-            <option value="板中永區">板中永區</option>
+                {regions.map(r => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
               </select>
             </div>
           </div>

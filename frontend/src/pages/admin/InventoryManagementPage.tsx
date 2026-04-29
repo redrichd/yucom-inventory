@@ -4,6 +4,8 @@ import { db } from "../../lib/firebase";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { useNavigate } from "react-router-dom";
+import { createRequest } from "../../features/requests/requestService";
 
 interface InventoryItem {
   id: string;
@@ -14,10 +16,13 @@ interface InventoryItem {
 
 export default function InventoryManagementPage() {
   const { userData } = useAuth();
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [adjustment, setAdjustment] = useState<number>(0);
   const [reason, setReason] = useState("");
+  const [requestQty, setRequestQty] = useState<number>(1);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (userData?.region) {
@@ -49,9 +54,21 @@ export default function InventoryManagementPage() {
       });
     });
     
-    setSelectedItem(null);
-    setReason("");
     // Refresh items locally
+  };
+
+  const handleAdminRequest = async () => {
+    if (!selectedItem || !userData) return;
+    try {
+      setLoading(true);
+      await createRequest(userData.uid, userData.displayName, selectedItem.id, requestQty);
+      alert("申請成功！正在跳轉至審核頁面...");
+      navigate("/admin/approvals");
+    } catch (error: any) {
+      alert("申請失敗：" + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,13 +92,27 @@ export default function InventoryManagementPage() {
          </div>
          
          {selectedItem && (
-           <div className="bg-white p-6 rounded-xl shadow space-y-4">
-              <h2 className="text-lg font-semibold">修正量 (正數增加，負數減少)</h2>
-              <Input type="number" value={adjustment} onChange={e => setAdjustment(Number(e.target.value))} />
-              <Input label="修正原因" placeholder="例如：入庫、盤損、毀損" value={reason} onChange={e => setReason(e.target.value)} required />
-              <Button className="w-full" onClick={handleUpdateStock} disabled={!reason}>執行修正</Button>
-           </div>
-         )}
+            <div className="space-y-6">
+               <div className="bg-white p-6 rounded-xl shadow space-y-4 border-l-4 border-blue-500">
+                  <h2 className="text-lg font-bold text-blue-700">功能 1：管理者直接申請</h2>
+                  <p className="text-sm text-gray-500">適用場景：管理者幫自己或他人領用物資，會產生申請紀錄。</p>
+                  <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                      <Input label="申請數量" type="number" min={1} value={requestQty} onChange={e => setRequestQty(Number(e.target.value))} />
+                    </div>
+                    <Button className="shrink-0 h-[42px] bg-blue-600" onClick={handleAdminRequest} disabled={loading}>送出申請</Button>
+                  </div>
+               </div>
+
+               <div className="bg-white p-6 rounded-xl shadow space-y-4 border-l-4 border-orange-500">
+                  <h2 className="text-lg font-bold text-orange-700">功能 2：庫存手動修正</h2>
+                  <p className="text-sm text-gray-500">適用場景：盤點差異、毀損剔除等，不產生申請紀錄，僅修正數字。</p>
+                  <Input label="修正數量 (正數加，負數減)" type="number" value={adjustment} onChange={e => setAdjustment(Number(e.target.value))} />
+                  <Input label="修正原因" placeholder="例如：盤損、過期" value={reason} onChange={e => setReason(e.target.value)} required />
+                  <Button className="w-full bg-orange-600" onClick={handleUpdateStock} disabled={!reason || loading}>執行修正</Button>
+               </div>
+            </div>
+          )}
       </div>
     </div>
   );

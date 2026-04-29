@@ -30,11 +30,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <Link to="/admin/approvals" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md">
             申請單審核
           </Link>
-          <div className="pt-4 border-t border-gray-100">
-             <Link to="/" className="block px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-md font-bold">
-               前往物資申請 (前端)
-             </Link>
-          </div>
           {userData?.role === "SUPER_ADMIN" && (
              <Link to="/admin/settings" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md">
                全域設定
