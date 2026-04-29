@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./lib/firebase";
 import { AuthProvider, useAuth } from "./features/auth/AuthProvider";
 import RegisterPage from "./pages/RegisterPage";
 import PendingApprovalPage from "./pages/PendingApprovalPage";
@@ -49,6 +52,30 @@ function AuthenticatedRoutes() {
 
 
 export default function App() {
+  useEffect(() => {
+    // 獨立的非同步函式，不影響主執行緒
+    const syncFavicon = async () => {
+      try {
+        const snap = await getDoc(doc(db, "settings", "global"));
+        if (snap.exists() && snap.data().logoUrl) {
+          const url = snap.data().logoUrl;
+          const iconLinks = document.querySelectorAll("link[rel*='icon']");
+          if (iconLinks.length > 0) {
+            iconLinks.forEach(link => (link as HTMLLinkElement).href = url);
+          } else {
+            const newLink = document.createElement('link');
+            newLink.rel = 'icon';
+            newLink.href = url;
+            document.head.appendChild(newLink);
+          }
+        }
+      } catch (e) {
+        // 即使失敗也不要報錯
+      }
+    };
+    syncFavicon();
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
