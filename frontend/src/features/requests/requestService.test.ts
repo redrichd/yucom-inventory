@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runTransaction } from "firebase/firestore";
-import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+
 import { createRequest } from "./requestService";
 
 vi.mock("firebase/firestore");
