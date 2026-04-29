@@ -30,7 +30,12 @@ service cloud.firestore {
     // Inventory collection rules
     match /inventory/{itemId} {
       allow read: if isSignedIn() && isActive();
-      allow write: if isAdmin();
+      // 管理員可完全寫入；一般使用者僅能在申請時扣除「可用庫存」
+      allow update: if isAdmin() || (
+        isSignedIn() && isActive() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['availableQuantity'])
+      );
+      allow create, delete: if isAdmin();
     }
 
     // Requests collection rules
